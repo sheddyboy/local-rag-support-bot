@@ -4,7 +4,6 @@ import re
 from pathlib import Path
 
 from bs4 import BeautifulSoup
-from IPython.display import Markdown, display
 from langchain_core.documents import Document
 from langchain_pymupdf4llm import PyMuPDF4LLMLoader
 
@@ -16,6 +15,8 @@ SOURCE_TYPES = {
 
 
 def show(docs):
+    from IPython.display import Markdown, display
+
     for doc in docs:
         page = doc.metadata.get("page", 1)
         title = doc.metadata.get("title", "Untitled")
