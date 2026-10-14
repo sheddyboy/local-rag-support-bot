@@ -28,12 +28,6 @@ class Settings(BaseSettings):
 
     # Retrieval
     retrieval_k: int = 6  # chunks handed to the LLM
-    use_query_instruction: bool = (
-        True  # Qwen3-Embedding is instruction aware (queries only)
-    )
-    query_instruction: str = (
-        "Given a customer support question, retrieve relevant passages that answer it"
-    )
 
     # Generation
     generation_model: str = "qwen3:8b"  # runs in Ollama

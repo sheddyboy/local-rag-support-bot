@@ -18,7 +18,6 @@ from qdrant_client import models
 from app.config import settings
 
 
-@lru_cache
 def get_dense_embeddings() -> OllamaEmbeddings:
     return OllamaEmbeddings(
         model=settings.dense_model, base_url=settings.ollama_base_url
@@ -31,19 +30,11 @@ def get_sparse_embeddings() -> FastEmbedSparse:
 
 
 def embed_query_dense(query: str) -> list[float]:
-    """Dense vector for a search query.
-
-    Qwen3-Embedding is instruction aware: a query gets a one-line task instruction,
-    documents never do (ingestion embeds documents as they are).
-    """
-    if (
-        settings.use_query_instruction
-    ):  # read on every call, so it can be toggled for A/B tests
-        query = f"Instruct: {settings.query_instruction}\nQuery:{query}"
+    """Dense vector for a search query."""
     return get_dense_embeddings().embed_query(query)
 
 
 def embed_query_sparse(query: str) -> models.SparseVector:
-    """BM25 vector for a search query. It gets the raw query, never the instruction."""
+    """BM25 vector for a search query."""
     vector = get_sparse_embeddings().embed_query(query)
     return models.SparseVector(indices=vector.indices, values=vector.values)
