@@ -35,5 +35,12 @@ class Settings(BaseSettings):
         "Given a customer support question, retrieve relevant passages that answer it"
     )
 
+    # Generation
+    generation_model: str = "qwen3:8b"  # runs in Ollama
+    num_ctx: int = (
+        8192  # context window: must fit the retrieved chunks, the prompt and the answer
+    )
+    max_answer_tokens: int = 1024
+
 
 settings = Settings()
