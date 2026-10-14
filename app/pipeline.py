@@ -13,7 +13,6 @@ import time
 from langchain_core.runnables import Runnable
 
 from app.generate import generate
-from app.ingestion.vector_store import close_client
 from app.retrieve import Mode, retrieve
 
 
@@ -67,8 +66,6 @@ def main(argv: list[str] | None = None) -> None:
         result = run_pipeline(args.question, k=args.k, mode=args.mode)
     except RuntimeError as exc:  # for example: no index yet
         raise SystemExit(str(exc))
-    finally:
-        close_client()  # release the Qdrant folder lock
 
     if args.json:
         print(json.dumps(result, indent=2))

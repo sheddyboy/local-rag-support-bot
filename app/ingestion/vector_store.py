@@ -5,9 +5,7 @@ Every chunk is stored with two vectors, a dense one (meaning) and a sparse BM25 
 sparse-only mode, which lets us measure hybrid against a dense baseline.
 
 Embedded Qdrant keeps everything in a folder and lets only one connection use it at a
-time. Retrieval shares ONE client (get_client), and rebuild_collection() closes it
-first. In a notebook, call close_client() before running anything else that opens
-the same folder.
+time, so retrieval shares ONE client (get_client).
 """
 
 from __future__ import annotations
@@ -24,7 +22,6 @@ from app.ingestion import embedding
 
 def rebuild_collection(chunks: list[Document]) -> int:
     """Embed every chunk and rebuild the collection from scratch. Returns the point count."""
-    close_client()  # release the folder if retrieval had it open in this process
     store = QdrantVectorStore.from_documents(
         chunks,
         embedding=embedding.get_dense_embeddings(),
@@ -53,10 +50,3 @@ def get_client() -> QdrantClient:
             f"No index found at {settings.qdrant_path}. Run: python -m ingestion.main"
         )
     return client
-
-
-def close_client() -> None:
-    """Release the Qdrant folder lock."""
-    if get_client.cache_info().currsize:  # only if a client was actually opened
-        get_client().close()
-    get_client.cache_clear()
