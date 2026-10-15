@@ -126,14 +126,14 @@ flowchart LR
 │   ├── metrics.py             # deterministic retrieval and citation metrics
 │   ├── judges.py              # LLM-judged faithfulness, relevance, correctness
 │   ├── test_set.json          # 50 questions with ground truth and expected sources
-│   └── results/               # one folder + .json + .md per run
+│   └── results/               # one folder + .json + .md per run (git-ignored, kept empty)
 ├── tests/                     # offline unit tests (pytest)
 │   ├── conftest.py            # shared helpers, blocks accidental Ollama calls
 │   ├── test_ingest.py         # crawl, load, chunk, ingestion report
 │   ├── test_retrieve.py       # dense / sparse / hybrid search on in-memory Qdrant
 │   ├── test_generate.py       # prompt, citation checking, retries, fallbacks
 │   └── test_evals.py          # metrics, judges, harness, test-set consistency
-├── corpus/                    # the Helix knowledge base (100 documents)
+├── corpus/                    # the Helix knowledge base (100 documents, NOT in this repo)
 │   ├── product-docs/          # 60 Markdown files
 │   ├── runbooks/              # 25 PDFs (5 scanned)
 │   └── tickets/               # 15 HTML support tickets
@@ -166,13 +166,17 @@ ollama pull gpt-oss                # evaluation judge (only needed for evals)
 
 The BM25 sparse model (`Qdrant/bm25`) is downloaded automatically by fastembed on first use.
 
+### Add the corpus
+
+The knowledge base is not included in this repository. Place it in `./corpus` with the layout described in [The corpus](#the-corpus) (or point `CORPUS_DIR` at it). Without it, ingestion and the full evaluation cannot run, but the unit tests still pass because they use their own fixtures.
+
 ### Build the index
 
 ```bash
 uv run python -m app.ingestion.main
 ```
 
-This rebuilds the Qdrant collection from scratch on every run (about 20 seconds for the full corpus) and writes `evals/results/ingestion_report.json`. Expected output for the bundled corpus: 100 files found, 0 failed, 406 chunks.
+This rebuilds the Qdrant collection from scratch on every run (about 20 seconds for the full corpus) and writes `evals/results/ingestion_report.json`. Expected output for the 100-document corpus described below: 100 files found, 0 failed, 406 chunks (366 product doc, 25 runbook, 15 ticket).
 
 To check parsing and chunking without Ollama:
 
@@ -314,4 +318,52 @@ Changing `dense_model` requires re-running ingestion, since the stored vectors m
 
 ## The corpus
 
-Helix is a fictional B2B workflow automation platform; every fact, plan, limit and policy is defined inside the corpus, so each test question has an unambiguous answer. See [corpus/README.md](corpus/README.md) for details on the document set, including the scanned PDFs and cross-referenced facts.
+The documents are not redistributed with this repository. This section describes what the code expects so you can supply an equivalent knowledge base.
+
+Helix is a fictional B2B workflow automation platform. The corpus is its entire knowledge base: every fact, plan, limit and policy is defined inside it, so each test question has an unambiguous answer.
+
+### Layout
+
+The crawler only walks three top-level folders. Anything else (a README, the test set, stray folders) is ignored, and hidden files such as `.DS_Store` are skipped.
+
+```
+corpus/
+├── product-docs/      60 Markdown files
+│   ├── getting-started/  (5)    ├── admin/          (8)
+│   ├── workflows/        (10)   ├── billing/        (5)
+│   ├── integrations/     (10)   ├── data/           (6)
+│   ├── api/              (10)   ├── notifications/  (4)
+│   └── mobile/           (2)
+├── runbooks/          25 PDFs (20 text-native, 5 scanned images)
+│   ├── incident-response/ (5)   ├── engineering/    (5)
+│   ├── customer-ops/      (9)   └── csm/            (6)
+└── tickets/           15 resolved support tickets (HTML)
+```
+
+| Source type | Format | How it is handled |
+|---|---|---|
+| `product_doc` | Markdown | Read as is, split on headings, size-capped at 2400 chars |
+| `runbook` | PDF | PyMuPDF4LLM with OCR for the scanned files, kept whole up to 4000 chars |
+| `ticket` | HTML from one fixed template | Converted to Markdown (header fields, conversation, resolution); customer and agent names dropped |
+
+A document's `doc_id` is its path relative to `corpus/` (for example `product-docs/workflows/creating-workflows.md`). It is the label the model cites and the key the evaluation matches against, so file paths must be stable.
+
+The corpus is deliberately realistic rather than clean: mixed formats, scanned PDFs, tables and code blocks, and the same fact repeated across several documents (a workflow timeout, for instance, appears in docs, an API reference and a ticket), which makes retrieval ranking matter.
+
+### The evaluation test set
+
+`evals/test_set.json` is committed. It holds 50 queries in this shape:
+
+```json
+{
+  "id": "Q001",
+  "query": "...",
+  "ground_truth_answer": "...",
+  "expected_sources": ["product-docs/workflows/creating-workflows.md"],
+  "difficulty": "easy",
+  "category": "workflows",
+  "notes": "key facts the answer must contain"
+}
+```
+
+`expected_sources` are document-level labels, used for the deterministic retrieval and citation metrics. `ground_truth_answer` and `notes` feed the LLM-judged correctness score. Results are written to `evals/results/`, which is git-ignored because each run stores the retrieved corpus text alongside the answers.

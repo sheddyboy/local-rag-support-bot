@@ -12,3 +12,8 @@ wheels/
 # Scratch files
 tmp/
 data/
+
+# Knowledge base and eval outputs (not redistributed; see README)
+corpus/
+evals/results/*
+!evals/results/.gitkeep
