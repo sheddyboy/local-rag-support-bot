@@ -36,5 +36,14 @@ class Settings(BaseSettings):
     )
     max_answer_tokens: int = 1024
 
+    # Evaluation
+    judge_model: str = (
+        "gpt-oss:latest"  # a different, stronger model than the generator
+    )
+    judge_reasoning: str = "low"  # gpt-oss thinking effort: low, medium or high ("true"/"false" for other models)
+    judge_num_ctx: int = 16384  # the judge reads all retrieved chunks plus the answer
+    test_set_path: Path = Path("evals/test_set.json")
+    results_dir: Path = Path("evals/results")
+
 
 settings = Settings()
